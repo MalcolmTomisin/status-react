@@ -81,10 +81,54 @@ class ChatElement(SilentButton):
 
         return ChatImage(self.driver)
 
+
 class ChatElementInAC(SilentButton):
     def __init__(self, driver, username_part):
         self.username = username_part
         super().__init__(driver, xpath="//*[@content-desc='chat-name-or-sender-text'][starts-with(@text,'%s')]/.." % username_part)
+
+
+class ActivityCenterChatElement(SilentButton):
+    def __init__(self, driver, chat_name):
+        self.chat_name = chat_name
+        super().__init__(driver, xpath="//*[@content-desc='chat-name-or-sender-text'][starts-with(@text,'%s')]/.." % chat_name)
+
+    def navigate(self):
+        from views.chat_view import ChatView
+        return ChatView(self.driver)
+
+    def click(self):
+        from views.chat_view import ChatView
+        desired_element = ChatView(self.driver).chat_message_input
+        self.click_until_presence_of_element(desired_element=desired_element)
+
+        return self.navigate()
+
+    @property
+    def chat_image(self):
+        class ChatImage(BaseElement):
+            def __init__(self, driver, parent_locator: str):
+                super().__init__(driver, xpath="%s//*[@content-desc='current-account-photo']" % parent_locator)
+
+        return ChatImage(self.driver, self.locator)
+
+    @property
+    def chat_message_preview(self):
+        class ChatMessagePreview(Text):
+            def __init__(self, driver, parent_locator: str):
+                super().__init__(driver, xpath="%s//*[@content-desc='chat-message-text']" % parent_locator)
+
+        return ChatMessagePreview(self.driver, self.locator).text
+
+    @property
+    def chat_name_indicator_text(self):
+        class ChatNameIndicatorText(Text):
+            def __init__(self, driver, parent_locator: str):
+                super().__init__(driver, xpath="(%s//*[@content-desc='chat-name-container']//android.widget.TextView)[last()]" % parent_locator)
+        try:
+            return ChatNameIndicatorText(self.driver, self.locator).text
+        except NoSuchElementException:
+            return ''
 
 
 class HomeView(BaseView):
@@ -111,6 +155,8 @@ class HomeView(BaseView):
         self.notifications_accept_and_add_button = Button(self.driver, accessibility_id="accept-and-add-activity-center")
         self.notifications_select_all = Button(self.driver, xpath="(//android.widget.CheckBox["
                                                                   "@content-desc='checkbox'])[1]")
+        self.activity_center_chat_element = ActivityCenterChatElement(self.driver)
+
         # Options on long tap
         self.chats_menu_invite_friends_button = Button(self.driver, accessibility_id="chats-menu-invite-friends-button")
         self.delete_chat_button = Button(self.driver, accessibility_id="delete-chat-button")
@@ -218,7 +264,6 @@ class HomeView(BaseView):
 
         chat_view.confirm_create_in_community_button.click()
         return chat_view.get_community_by_name(name)
-
 
     def join_public_chat(self, chat_name: str):
         self.driver.info("**Creating public chat %s**" % chat_name)

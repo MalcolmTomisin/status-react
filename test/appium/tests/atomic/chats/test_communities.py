@@ -127,13 +127,33 @@ class TestCommunitiesMultipleDevices(MultipleDeviceTestCase):
         home_1.just_fyi("Approve membership")
         community_1.handle_membership_request(username_2, approve=True)
         channel_2 = community_2.get_chat(channel_name).click()
-        channel_2.send_message(message_member)
+        channel_2.select_mention_from_suggestion_list(username_1, username_1[:2])
+        channel_2.send_message_button.click()
         community_1.home_button.double_click()
-        home_1.get_chat(community_name, community=True).click()
-        chat_element_1 = community_1.get_chat(channel_name)
-        if not chat_element_1.new_messages_public_chat.is_element_displayed():
-            self.errors.append("Unread messages counter is not shown for community channel!")
-        if not community_1.element_by_text(message_member).is_element_displayed():
-            self.errors.append("Message from member is not shown for community channel!")
+        channel_2.home_button.click()
+        home_2.get_chat_from_home_view(pub_chat_name).click()
+        pub_2.select_mention_from_suggestion_list(username_1, username_1[:2])
+        pub_2.send_message_button.click()
+
+        if not home_1.notifications_unread_badge.is_element_displayed():
+            self.errors.append("Unread badge is NOT shown after receiving mentions from Group and Community")
+        home_1.notifications_unread_badge.wait_and_click(30)
+        if home_1.activity_center_chat_element(username_1[-20:]).chat_name_indicator_text == pub_chat_name:
+            home_1.just_fyi("Open group chat where user mentioned and return to Activity Center")
+            home_1.activity_center_chat_element(username_1[-20:]).click()
+            home_1.home_button.click()
+            home_1.notifications_button.click()
+        else:
+            self.errors.append("No mention in Activity Center for Group Chat")
+
+        if home_1.activity_center_chat_element(username_1[-20:]).chat_name_indicator_text == channel_name:
+            home_1.activity_center_chat_element(username_1[-20:]).click()
+            home_1.home_button.click()
+            home_1.notifications_button.click()
+        else:
+            self.errors.append("No mention in Activity Center for community chat")
+
+        if not home_1.element_by_translation_id('empty-activity-center').is_element_present():
+            self.errors.append("It appears Activity Center still has some chats after user opened all of them")
 
         self.errors.verify_no_errors()
